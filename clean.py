@@ -45,7 +45,7 @@ def split_data(df, train_size=0.7):
 def train():
     train_set = pickle.load(open("train_set.pkl", "rb"))
     hPredictor = HeuristicPredictor(train_set)
-    aPredictor = AprioriPredictor(train_set, 0.05, 0.05)
+    aPredictor = AprioriPredictor(train_set, 0.05, 0.01)
 
     return hPredictor, aPredictor
 
