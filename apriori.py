@@ -1,30 +1,36 @@
-import typing
 from efficient_apriori.itemsets import itemsets_from_transactions
 from efficient_apriori.rules import generate_rules_apriori
 import pandas as pd
 
+
 class AprioriPredictor:
     def __init__(self, df, min_confidence, min_support):
         transactions = self.parse_data(df)
-        self.itemsets, self.num_transactions = itemsets_from_transactions(transactions, min_support, output_transaction_ids=True)
+        self.itemsets, self.num_transactions = itemsets_from_transactions(
+            transactions, min_support, output_transaction_ids=True
+        )
         itemsets_raw = {
-            length: {item: counter.itemset_count for (item, counter) in itemsets.items()}
-                for (length, itemsets) in self.itemsets.items()
+            length: {
+                item: counter.itemset_count for (item, counter) in itemsets.items()
             }
-        self.rules = list(generate_rules_apriori(itemsets_raw, min_confidence, self.num_transactions))
+            for (length, itemsets) in self.itemsets.items()
+        }
+        self.rules = list(
+            generate_rules_apriori(itemsets_raw, min_confidence, self.num_transactions)
+        )
 
     def predict(self, context, target_prefix):
         predictions = set()
         context_set = set(context)
-        
+
         for rule in self.rules:
             if set(rule.lhs).issubset(context_set):
                 for item in rule.rhs:
                     if item.startswith(target_prefix):
                         predictions.add(item)
-                        
+
         return list(predictions)
-    
+
     def clean_row(self, row):
         clean_row = []
         if pd.notna(row.neighbourhood):
@@ -52,5 +58,3 @@ class AprioriPredictor:
 
         transactions = tuple(transactions)
         return transactions
-
-

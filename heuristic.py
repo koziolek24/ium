@@ -1,5 +1,5 @@
-from collections import defaultdict, Counter
-import pandas as pd
+from collections import defaultdict
+
 
 class HeuristicPredictor:
     def __init__(self, df):
@@ -8,7 +8,9 @@ class HeuristicPredictor:
 
     def fit(self, df):
         for col in df.columns:
-            self.predictionSet[col] = df[col].value_counts(dropna=True).head(1).index.to_list()
-    
+            self.predictionSet[col] = (
+                df[col].value_counts(dropna=True).head(1).index.to_list()
+            )
+
     def predict(self, key):
         return self.predictionSet.get(key, None)
