@@ -1,113 +1,131 @@
-from sklearn.model_selection import train_test_split
-import pandas as pd
-import pickle
-from heuristic import HeuristicPredictor
-from knn import KNNPredictor
-
-from apriori import AprioriPredictor
-
-class Metric:
-    def __init__(self):
-        self.nan = 0
-        self.correct = 0
-        self.wrong = 0
-    
-    def __str__(self):
-        return f"NaN: {self.nan}; correct: {self.correct}, wrong: {self.wrong}; ratio: {self.correct/max(1,(self.correct + self.wrong))}"
+from fastapi import FastAPI, Response, Request
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
+from typing import Optional
+import random
+from clean import train, AprioriPredictor
 
 
-def clean_data():
-    df = pd.read_csv('listings.csv')
-    important_columns = set(
-        [
-        'neighbourhood','neighbourhood_cleansed',
-        'property_type', 
-        'room_type', 
-        'accommodates', 
-        'bathrooms',
-        'bedrooms',
-        'beds'
-        ]
-    )
-    to_drop = set(df.columns).difference(important_columns)
-    df = df.drop(to_drop, axis=1)
-    pickle.dump(df, open('data.pkl', 'wb'))    
+class FormData(BaseModel):
+    neighbourhood: Optional[str] = None
+    neighbourhood_cleansed: Optional[str] = None
+    property_type: Optional[str] = None
+    accommodates: Optional[str] = None
+    bathrooms: Optional[str] = None
+    beds: Optional[str] = None
+    bedrooms: Optional[str] = None
+    room_type: Optional[str] = None
 
-def split_data(df, train_size = 0.7):
-    train_set, test_set = train_test_split(df, test_size=(1-train_size))
-    pickle.dump(train_set, open('train_set.pkl', 'wb+'))
-    pickle.dump(test_set, open('test_set.pkl', 'wb+'))
 
-def train():
-    train_set = pickle.load(open('train_set.pkl', 'rb'))
-    hPredictor = HeuristicPredictor(train_set)
-    aPredictor = AprioriPredictor(train_set, 0.05, 0.05)
+class MetricData(BaseModel):
+    duration_seconds: float
 
-    return hPredictor, aPredictor
+app = FastAPI()
 
-def validate(predictor):
-    test_set = pickle.load(open('test_set.pkl', 'rb'))
-    prediction_columns = [
-        'room_type', 'accommodates', 'bathrooms', 
-        'bedrooms', 'beds'
-    ]
-    metrics = {key: Metric() for key in prediction_columns}
-    
-    col_to_prefix = {
-        'neighbourhood': 'neighb:',
-        'neighbourhood_cleansed': 'neigh.cl:',
-        'property_type': 'prop_type:',
-        'room_type': 'room_type:',
-        'accommodates': 'accom:',
-        'bathrooms': 'bathrooms:',
-        'bedrooms': 'bedrooms:',
-        'beds': 'beds:',
-    }
-    skippable = [
-        'neighbourhood', 'neighbourhood_cleansed', 'property_type'
-    ]
-    for row in test_set.itertuples(index = False):
-        context_list = []        
-        for col, item in zip(row._fields, row):
-            if col in skippable:
-                if pd.notna(item):
-                    if col in col_to_prefix:
-                        context_list.append(f"{col_to_prefix[col]}{item}")
-                continue 
-            if pd.isna(item):
-                metrics[col].nan += 1
-            else:
-                if isinstance(predictor, AprioriPredictor):
-                   prefix = col_to_prefix.get(col, "")
-                   predicted = predictor.predict(context_list, prefix)
-                   target_item = f"{prefix}{item}"
-                   if target_item in predicted:
-                       metrics[col].correct += 1
-                   else:
-                       metrics[col].wrong += 1
-                else:
-                    predicted = predictor.predict(col)
-                    if item in predicted:
-                        metrics[col].correct += 1
-                    else:
-                        metrics[col].wrong += 1
+apriori_model = None
+heuristic_model = None
 
-            if pd.notna(item):
-                if col in col_to_prefix:
-                    context_list.append(f"{col_to_prefix[col]}{item}")
+col_to_prefix = {
+    "neighbourhood": "neighb:",
+    "neighbourhood_cleansed": "neigh.cl:",
+    "property_type": "prop_type:",
+    "room_type": "room_type:",
+    "accommodates": "accom:",
+    "bathrooms": "bathrooms:",
+    "bedrooms": "bedrooms:",
+    "beds": "beds:",
+}
 
-    for key in metrics.keys():
-        print(key, metrics[key])
 
-def main():
-    clean_data()
-    df = pickle.load(open('data.pkl', 'rb'))
-    split_data(df)
+@app.on_event("startup")
+def load_models():
+    global apriori_model, heuristic_model
     hPredictor, aPredictor = train()
-    print("--- Heuristic Results ---")
-    validate(hPredictor)
-    print("\n--- Apriori Results ---")
-    validate(aPredictor)
+    apriori_model = aPredictor
+    heuristic_model = hPredictor
+    print("Models loaded: Apriori and Heuristic ready.")
+
+
+@app.get("/")
+def read_root():
+    return FileResponse("index.html")
+
+
+@app.post("/submit_time")
+def submit_time(metric: MetricData, request: Request):
+    model_version = request.cookies.get("model_version", "Unknown")
+
+    log_entry = f"Model: {model_version}, Duration: {metric.duration_seconds}s"
+    print(f"METRIC: {log_entry}")
+
+    with open("ab_results.txt", "a") as f:
+        f.write(f"{model_version},{metric.duration_seconds}\n")
+
+    return {"status": "recorded"}
+
+
+@app.post("/predict")
+def predict(form_data: FormData, response: Response, request: Request):
+    if not apriori_model or not heuristic_model:
+        return {"error": "Models not loaded"}
+
+    model_choice = request.cookies.get("model_version")
+
+    if not model_choice:
+        model_choice = random.choice(["A", "B"])
+        response.set_cookie(key="model_version", value=model_choice)
+
+    if model_choice == "A":
+        active_predictor = apriori_model
+        predictor_name = "Apriori"
+    else:
+        active_predictor = heuristic_model
+        predictor_name = "Heuristic"
+
+    print(f"Request handled by: {predictor_name} (Group {model_choice})")
+
+    context_list = []
+    data_dict = form_data.model_dump(exclude_none=True)
+
+    for col, value in data_dict.items():
+        if value and col in col_to_prefix:
+            prefix = col_to_prefix[col]
+            if not value.startswith(prefix):
+                context_list.append(f"{prefix}{value}")
+            else:
+                context_list.append(value)
+
+    predictions = {}
+
+    for field_name in form_data.model_fields.keys():
+        if getattr(form_data, field_name):
+            continue
+
+        if field_name in col_to_prefix:
+            results = None
+            prefix = col_to_prefix[field_name]
+
+            if isinstance(active_predictor, AprioriPredictor):
+                results = active_predictor.predict(context_list, prefix)
+            else:
+                results = active_predictor.predict(field_name)
+
+            if results:
+                best_match = list(results)[0]
+
+                if best_match.startswith(prefix):
+                    clean_value = best_match[len(prefix) :]
+                    predictions[field_name] = clean_value
+                else:
+                    predictions[field_name] = best_match
+
+    predictions["_model_used"] = predictor_name
+
+    return predictions
+
 
 if __name__ == "__main__":
-    main()
+    import uvicorn
+
+    load_models()
+    uvicorn.run(app, host="0.0.0.0", port=8000)
