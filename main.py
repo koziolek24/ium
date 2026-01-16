@@ -3,7 +3,8 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional
 import random
-from clean import train, AprioriPredictor
+from clean import train
+from apriori import AprioriPredictor
 
 
 class FormData(BaseModel):
@@ -19,6 +20,7 @@ class FormData(BaseModel):
 
 class MetricData(BaseModel):
     duration_seconds: float
+    fields_predicted_before_fill : int
 
 app = FastAPI()
 
@@ -59,7 +61,7 @@ def submit_time(metric: MetricData, request: Request):
     print(f"METRIC: {log_entry}")
 
     with open("ab_results.txt", "a") as f:
-        f.write(f"{model_version},{metric.duration_seconds}\n")
+        f.write(f"{model_version},{metric.duration_seconds},{metric.fields_predicted_before_fill}\n")
 
     return {"status": "recorded"}
 
@@ -113,7 +115,7 @@ def predict(form_data: FormData, response: Response, request: Request):
             if results:
                 best_match = list(results)[0]
 
-                if best_match.startswith(prefix):
+                if  isinstance(best_match, str) and best_match.startswith(prefix):
                     clean_value = best_match[len(prefix) :]
                     predictions[field_name] = clean_value
                 else:

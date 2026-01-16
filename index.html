@@ -41,8 +41,8 @@
     <h1>IUM model</h1>
     <form id="prediction-form">
         <div class="form-group">
-            <label for="field1">neighbourhood</label>
-            <input type="text" id="field1" name="field1">
+            <label for="neighbourhood">neighbourhood</label>
+            <input type="text" id="neighbourhood" name="neighbourhood">
         </div>
 
         <div class="form-group">
@@ -93,6 +93,7 @@
         const form = document.getElementById('prediction-form');
         let startTime = null;
         let isFinished = false;
+        let fieldsPredictedBeforeFill = new Set();
 
         // Listen for changes on the entire form (event delegation)
         form.addEventListener('input', async (event) => {
@@ -130,9 +131,10 @@
                         if (key.startsWith('_')) return;
 
                         const input = form.elements[key];
-                        if (input && input !== document.activeElement && value) {
-                            input.value = value;
-                        }
+                        if (!input || input == document.activeElement || !value) return;
+
+                        if (!input.value) fieldsPredictedBeforeFill.add(key);
+                        input.value = value;
                     });
                 }
             } catch (error) {
@@ -158,7 +160,10 @@
             await fetch('/submit_time', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ duration_seconds: parseFloat(durationSec) })
+                body: JSON.stringify({ 
+                    duration_seconds: parseFloat(durationSec),
+                    fields_predicted_before_fill: fieldsPredictedBeforeFill.size
+                })
             });
 
             alert(`Great! You finished in ${durationSec} seconds.`);

@@ -1,0 +1,9 @@
+A = Apriori; B = Heurystyka
+            n  duration_mean  duration_median  duration_p90  typed_mean  typed_median  autofill_mean  autofill_median
+group                                                                                                                
+A      3788.0          24.31            22.03         42.53        4.02           4.0           3.98              4.0
+B      3895.0          24.93            22.02         45.51        4.60           5.0           3.40              3.0
+
+A - B:
+  duration_mean_difference: -0.613 s
+  typed_mean_difference:    -0.586 fields

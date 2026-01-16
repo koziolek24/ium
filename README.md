@@ -45,3 +45,19 @@ To regenerate the `data.pkl`, `test_set.pkl`, and `train_set.pkl` artifacts:
 ```bash
 uv run python clean.py
 ```
+## A/B Tests
+
+To generate a/b tests data as ab_results.txt:
+```bash
+python ab_tests_generator.py
+```
+
+To analyze a/b tests results:
+```bash
+python ab_tests_analyzer.py
+```
+
+To analyze our a/b tests results:
+```bash
+python ab_tests_analyzer.py ab_results.csv
+```

@@ -13,8 +13,19 @@ class Metric:
         self.correct = 0
         self.wrong = 0
 
+        self.tp = 0
+        self.fp = 0
+
+    @property
+    def accuracy(self):
+        return self.correct / (max(1, (self.correct + self.wrong)))
+    
+    @property
+    def precision(self):
+        return self.tp / (max(1, (self.tp + self.fp)))
+
     def __str__(self):
-        return f"NaN: {self.nan}; correct: {self.correct}, wrong: {self.wrong}; ratio: {self.correct / max(1, (self.correct + self.wrong))}"
+        return f"NaN: {self.nan}; correct: {self.correct}, wrong: {self.wrong}; precision: {self.precision:.4f}; accuracy: {self.accuracy:.4f};"
 
 
 def clean_data():
@@ -81,12 +92,23 @@ def validate(predictor):
                     prefix = col_to_prefix.get(col, "")
                     predicted = predictor.predict(context_list, prefix)
                     target_item = f"{prefix}{item}"
+                    top1 = predicted[0] if len(predicted) > 0 else None
+                    if top1 == target_item:
+                        metrics[col].tp += 1
+                    else:
+                        metrics[col].fp += 1
+                    
                     if target_item in predicted:
                         metrics[col].correct += 1
                     else:
                         metrics[col].wrong += 1
                 else:
                     predicted = predictor.predict(col)
+                    top1 = predicted[0] if len(predicted) > 0 else None
+                    if top1 == item:
+                        metrics[col].tp += 1
+                    else:
+                        metrics[col].fp += 1
                     if item in predicted:
                         metrics[col].correct += 1
                     else:
