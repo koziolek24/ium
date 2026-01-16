@@ -1,0 +1,13 @@
+--- Heuristic Results ---
+room_type NaN: 1486; correct: 4031, wrong: 2166; precision: 0.6505; accuracy: 0.6505;
+accommodates NaN: 1543; correct: 3537, wrong: 2603; precision: 0.5761; accuracy: 0.5761;
+bathrooms NaN: 2779; correct: 3525, wrong: 1379; precision: 0.7188; accuracy: 0.7188;
+bedrooms NaN: 1825; correct: 4176, wrong: 1682; precision: 0.7129; accuracy: 0.7129;
+beds NaN: 2754; correct: 2931, wrong: 1998; precision: 0.5946; accuracy: 0.5946;
+
+--- Apriori Results ---
+room_type NaN: 1486; correct: 5210, wrong: 987; precision: 0.5606; accuracy: 0.8407;
+accommodates NaN: 1543; correct: 4900, wrong: 1240; precision: 0.1386; accuracy: 0.7980;
+bathrooms NaN: 2779; correct: 4043, wrong: 861; precision: 0.3093; accuracy: 0.8244;
+bedrooms NaN: 1825; correct: 5234, wrong: 624; precision: 0.7110; accuracy: 0.8935;
+beds NaN: 2754; correct: 4302, wrong: 627; precision: 0.2211; accuracy: 0.8728;
